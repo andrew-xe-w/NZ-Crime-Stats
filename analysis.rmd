@@ -11,7 +11,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # Question of Interest
 
-I was interested in how the level of crime in NZ is effected by unemployment rate, immigration, and the season.
+I was interested in how the level of crime in NZ is effected by unemployment rate, immigration, and the season. I am especially interested in validating the claim that crime rates are lower in Winter.
 
 Therefore, I collected victimisation data from NZ's Police government database for the period July 2014 - June 2020. I also collected data on unemployment rates, and immigration from NZ stats.
 
@@ -115,23 +115,38 @@ nb.mod = glm.nb(Number_of_Victims ~ Unemployment_Rate + Net_Migration_Arrival + 
 summary(nb.mod)
 ```
 
+```{r}
+anova(nb.mod)
+```
+
 
 ```{r}
+exp(confint(nb.mod))
 (exp(confint(nb.mod)) - 1)*100
+(exp(confint(nb.mod)[3,]*1000) - 1) * 100
 ```
 
 # Methods and Assumptions Check
-The response variable Number_of_Victims is a count, therefore I first fit a generalised linear model with a Poisson reponse distribution. However, after comparing the residual deviance and the degrees of freedom for this model, I knew it was not an adequate fit as the two numbers were very different. The model needed to allow for more variance so I fitted a GLM with a Negative Binomial reponse distribution.
+The response variable Number_of_Victims is a count, therefore I first fit a generalised linear model with a Poisson response distribution. However, after comparing the residual deviance and the degrees of freedom for this model, I knew it was not an adequate fit as the two numbers were very different. The model needed to allow for more variance so I fitted a GLM with a Negative Binomial reponse distribution.
 
 When checking the residuals and cooks plot, I could see there were a couple of influential data points at 69 and 70. These data points were due to the COVID-19 outbreak as the date of these data points was March and April of 2020. I decided to remove all data points after February 2020 as I believe the COVID-19 outbreak has had an effect on the data used in this study. All other assumptions were satisfied, and we can trust the results from this Negative Binomial model (P-value = 0.28).
 
 Our final model is:
 $$log(\mu_i) = \beta_0 + \beta_1 \times URate_i + \beta_2 \times Net\_Mig_i + \beta_3 \times Summer_i + \beta_4 \times Autumn_i + \beta_5 \times Spring_i$$
-Where $\mu_i$ is the mean number of Victimisations with a Negative Binomial distribution, at a given unemployment rate, net migration number, and in Winter. $URate_i$ is the unemployment rate for observation $i$. $Net\_Mig_i$ is the net migration into NZ for observation $i$. $Summer_i$, $Autumn_i$ and $Spring_i$ are dummy variables which take the value 1 if the observation is in that particular season, otherwise it is 0.
+Where $\mu_i$ is the mean number of Victimisations with a Negative Binomial distribution, at a given unemployment rate, net migration number, and in Winter. $URate_i$ is the unemployment rate for observation $i$. $Net\_Mig_i$ is the net migration into NZ for observation $i$. $Summer_i$, $Autumn_i$ and $Spring_i$ are dummy variables which take the value 1 if observation $i$ is in that particular season, otherwise it is 0.
 
 # Executive Summary
-I was interested in how the level of crime in NZ is effected by unemployment rate, immigration, and the season.
+I was interested in how the level of crime in NZ is effected by unemployment rate, immigration, and the season. I am especially interested in validating the claim that crime rates are lower in Winter.
 
-I can conclude that the higher the unemployment rate and net migration into NZ, the higher the number of victimisations. The mean number of Victimisations will 
+The data shows the higher the unemployment rate, the lower the number of victimisations. For a fixed net number of migrations a 1% increase in the unemployment rate would result in the mean number of victimisations to decrease by between 4% to 8%. For net migration into NZ I can see that the higher the net migration the higher the number of victimisations. For a fixed unemployment rate I would expect the mean number of victimisations to increase by between 3.2% and 5.4% for every net 1000 people migrating into NZ.
+
+Assuming unemployment rate and net number of migrations are made to equal 0, I estimate that the mean number of victimisations to be:
+
+* When the season is Winter, 17,295 victimisations.
+* The number of victimisations will be between 1.01% and 1.08% higher in Summer as compared to Winter.
+* The number of victimisations will be between 0.99% and 1.05% higher in Autumn as compared to Winter.
+* The number of victimisations will be between 0.98% and 1.05% higher in Spring as compared to Winter.
+
+Therefore, I can conclude that the claim that crime rates are lower in Winter is valid.
 
 
