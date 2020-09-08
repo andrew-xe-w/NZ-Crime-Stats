@@ -1,0 +1,137 @@
+---
+title: "Crime Data Analysis"
+author: "Andrew Wang"
+date: "07/09/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Question of Interest
+
+I was interested in how the level of crime in NZ is effected by unemployment rate, immigration, and the season.
+
+Therefore, I collected victimisation data from NZ's Police government database for the period July 2014 - June 2020. I also collected data on unemployment rates, and immigration from NZ stats.
+
+The variables of interest are:
+
+* Number_of_Victims: The number of victimisations for a given month of a year.
+* Unemployment_Rate: A number for the unemployment rate for a given month of a year.
+* Net_Migration_Arrival: A number for the net amount of people that have come into NZ for a given month of a year.
+* Season: A four-level factor which describes the Season for a given date.
+  + It has levels "Summer", "Autumn", "Winter", and "Spring"
+
+# Read in and Inspect the Data
+```{r}
+library(MASS)
+library(s20x)
+library(zoo)
+data = read.csv("crimedata.csv")
+head(data)
+```
+
+```{r}
+# Pairs Plot
+pairs(~ data$Number_of_Victims+data$Unemployment_Rate+data$Net_Migration_Arrival, data = data)
+```
+
+```{r}
+# Trying a Poisson glm
+poisson.mod = glm(Number_of_Victims ~ Unemployment_Rate + Net_Migration_Arrival + as.factor(Season), data = data, family = "poisson")
+summary(poisson.mod)
+```
+The summary of the Poisson model shows the residual deviance to be vastly different from the degrees of freedom, so I know the Poisson model is not an adequate fit for the data. 
+
+# Model Building and Assumption checks
+
+```{r}
+# Model Building and Assumption Checks
+# Trying a negative binomial glm (because we need to allow for more variance)
+nb.mod = glm.nb(Number_of_Victims ~ Unemployment_Rate + Net_Migration_Arrival + as.factor(Season), data = data)
+```
+
+```{r}
+plot(nb.mod, which = 1)
+```
+
+```{r}
+cooks20x(nb.mod)
+```
+From the Cook's distance plot I can see there are a few influential data points. These data points are more recent months and are due to the COVID-19 outbreak in NZ. I have decided to remove data points later than February 2020, as the outbreak started around March 2020, and it is quite possible the normal trend in crime has been effected by COVID-19.
+
+```{r}
+# Removing Covid months
+data.1 = data[1:68,]
+nb.mod = glm.nb(Number_of_Victims ~ Unemployment_Rate + Net_Migration_Arrival + as.factor(Season), data = data.1)
+```
+
+```{r}
+plot(nb.mod, which = 1)
+```
+
+```{r}
+cooks20x(nb.mod)
+```
+
+```{r}
+plot(predict(nb.mod), residuals(nb.mod, type = "response"))
+abline(0,0, lty = 2, col = "red")
+```
+
+```{r}
+plot(predict(nb.mod), residuals(nb.mod, type = "pearson"))
+abline(0,0, lty = 2, col = "red")
+```
+
+```{r}
+plot(predict(nb.mod), residuals(nb.mod, type = "deviance"))
+abline(0,0, lty = 2, col = "red")
+```
+We can see that deviance residuals and the pearson residual plots are very similar which indicates are assumptions are reasonable.
+
+```{r}
+summary(nb.mod)
+```
+
+```{r}
+# Performing Chisq goodness of fit test
+1 - pchisq(nb.mod$deviance,nb.mod$df.residual)
+```
+
+```{r}
+# Rotating Factors
+data.1 = within(data.1, {SeasonRotate=factor(Season,levels=c("Summer" ,"Winter" , "Autumn", "Spring"))})
+nb.mod = glm.nb(Number_of_Victims ~ Unemployment_Rate + Net_Migration_Arrival + SeasonRotate, data = data.1)
+summary(nb.mod)
+
+data.1 = within(data.1, {SeasonRotate=factor(Season,levels=c("Spring" ,"Winter" , "Autumn", "Summer"))})
+nb.mod = glm.nb(Number_of_Victims ~ Unemployment_Rate + Net_Migration_Arrival + SeasonRotate, data = data.1)
+summary(nb.mod)
+
+data.1 = within(data.1, {SeasonRotate=factor(Season,levels=c("Winter", "Summer", "Autumn", "Spring"))})
+nb.mod = glm.nb(Number_of_Victims ~ Unemployment_Rate + Net_Migration_Arrival + SeasonRotate, data = data.1)
+summary(nb.mod)
+```
+
+
+```{r}
+(exp(confint(nb.mod)) - 1)*100
+```
+
+# Methods and Assumptions Check
+The response variable Number_of_Victims is a count, therefore I first fit a generalised linear model with a Poisson reponse distribution. However, after comparing the residual deviance and the degrees of freedom for this model, I knew it was not an adequate fit as the two numbers were very different. The model needed to allow for more variance so I fitted a GLM with a Negative Binomial reponse distribution.
+
+When checking the residuals and cooks plot, I could see there were a couple of influential data points at 69 and 70. These data points were due to the COVID-19 outbreak as the date of these data points was March and April of 2020. I decided to remove all data points after February 2020 as I believe the COVID-19 outbreak has had an effect on the data used in this study. All other assumptions were satisfied, and we can trust the results from this Negative Binomial model (P-value = 0.28).
+
+Our final model is:
+$$log(\mu_i) = \beta_0 + \beta_1 \times URate_i + \beta_2 \times Net\_Mig_i + \beta_3 \times Summer_i + \beta_4 \times Autumn_i + \beta_5 \times Spring_i$$
+Where $\mu_i$ is the mean number of Victimisations with a Negative Binomial distribution, at a given unemployment rate, net migration number, and in Winter. $URate_i$ is the unemployment rate for observation $i$. $Net\_Mig_i$ is the net migration into NZ for observation $i$. $Summer_i$, $Autumn_i$ and $Spring_i$ are dummy variables which take the value 1 if the observation is in that particular season, otherwise it is 0.
+
+# Executive Summary
+I was interested in how the level of crime in NZ is effected by unemployment rate, immigration, and the season.
+
+I can conclude that the higher the unemployment rate and net migration into NZ, the higher the number of victimisations. The mean number of Victimisations will 
+
+

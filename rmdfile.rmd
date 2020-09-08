@@ -1,0 +1,88 @@
+---
+title: "NZ Crime Analysis"
+author: "Andrew Wang"
+date: "06/09/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Data is from July 2014 to July 2020
+
+```{r}
+library(zoo)
+library(lubridate)
+
+raw_data = read.csv(file = "nzcrimedata.csv")
+names(raw_data) = c("Dataset_Name", "Type_of_Offence", "Date", "Number_of_Victims")
+
+unemployment_data = read.csv(file = "unemploymentdata.csv") # Has been seasonally adjusted
+colnames(unemployment_data)[1] = "Date"
+
+migration_data = read.csv(file = "migrationdata.csv") # Has been seasonally adjusted (may contain national migrations)
+colnames(migration_data)[1] = "Date"
+```
+
+```{r}
+# Formatting dates
+raw_data$Date = as.yearmon(raw_data$Date, "%B %Y")
+unemployment_data$Date = as.yearmon(unemployment_data$Date, "%b-%y")
+migration_data$Date = as.yearmon(migration_data$Date, "%Y-%m-%d")
+
+# Aggregating By Date
+data = aggregate(Number_of_Victims~Date, data = raw_data, sum)
+data$Month = month(data$Date)
+data$Season = data$Month
+
+# Filtering out data earlier than July 2014 
+unemployment_data = unemployment_data[unemployment_data$Date >= as.yearmon("Jun 2014"),] # Uses Jun 2014 because it is quaterly data
+migration_data = migration_data[migration_data$Date >= as.yearmon("July 2014"),]
+
+# Filtering out data later than June 2020
+data = data[data$Date <= as.yearmon("June 2020"),]
+
+# Setting the season for each month for NZ
+for (i in seq(1, length(data$Season))) {
+  if (data$Season[i] >= 3 & data$Season[i] <= 5) {
+    data$Season[i] = "Autumn"
+  }
+  if (data$Season[i] >= 6 & data$Season[i] <= 8) {
+    data$Season[i] = "Winter"
+  }
+  if (data$Season[i] == 9 | data$Season[i] == 10 | data$Season[i] == 11) {
+    data$Season[i] = "Spring"
+  }
+  if (data$Season[i] == 1 | data$Season[i] == 2 | data$Season[i] == 12) {
+    data$Season[i] = "Summer"
+  }
+}
+
+# Adding the corresponding unemployment rate to each date 
+# Unemployment rate data only given in quaterly data, therefore unemployment rate was given to each month depending on which bracket it fit into.
+# For example unemployment_data for Dec 2014 = 5.5, for March 2015 = 5.4, any month between Dec 2014 and February 2015 was assigned 5.5 for
+# unemployment rate. (Could potentially interpolate values for this in the future)
+data$Unemployment_Rate = seq(1,nrow(data))
+for (i in seq(1, length(data$Unemployment_Rate))) {
+  for (j in seq(1, nrow(unemployment_data)-1)) {
+    if (data$Date[i] >= unemployment_data$Date[j] & data$Date[i] < unemployment_data$Date[j+1]) {
+      data$Unemployment_Rate[i] = unemployment_data$Total[j]
+    }
+    if (j == nrow(unemployment_data)-1) {
+      if (data$Date[i] >= unemployment_data$Date[j+1]) {
+        data$Unemployment_Rate[i] = unemployment_data$Total[j+1]
+      }
+    }
+  }
+}
+
+# Getting net migration column
+migration_data$Net_Arrival = migration_data$Arrivals - migration_data$Departures
+data$Net_Migration_Arrival = migration_data$Net_Arrival
+
+write.csv(x = data, "crimedata.csv")
+```
+
+
+
