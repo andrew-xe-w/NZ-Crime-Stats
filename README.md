@@ -1,8 +1,8 @@
 # NZ-Crime-Stats
 
-The data I have used can be found via the following links: (<-- two spaces)
-https://www.police.govt.nz/about-us/publications-statistics/data-and-statistics/policedatanz/victimisation-time-and-place (<-- two spaces)
-https://www.stats.govt.nz/indicators/unemployment-rate (<-- two spaces)
+The data I have used can be found via the following links: <br/>
+https://www.police.govt.nz/about-us/publications-statistics/data-and-statistics/policedatanz/victimisation-time-and-place <br/>
+https://www.stats.govt.nz/indicators/unemployment-rate <br/>
 https://www.stats.govt.nz/topics/migration
 
 In rmdfile.rmd you will see how the raw data was manipulated into the final data set found in crimedata.csv. The raw data 
